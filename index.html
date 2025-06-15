@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Schedule Planner</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Daily Schedule Planner</h1>
+            <p class="header-subtitle">Software Engineer & Company Owner - Work From Home Schedule</p>
+            <div class="header-date" id="currentDate"></div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="dashboard">Today's Schedule</button>
+            <button class="tab-btn" data-tab="weekly">Weekly Overview</button>
+            <button class="tab-btn" data-tab="goals">Goals & Progress</button>
+            <button class="tab-btn" data-tab="stats">Statistics</button>
+        </nav>
+
+        <!-- Dashboard Tab -->
+        <div class="tab-content active" id="dashboard">
+            <div class="dashboard">
+                <div class="progress-overview">
+                    <div class="progress-card">
+                        <h3>Daily Progress</h3>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="dailyProgress"></div>
+                        </div>
+                        <span class="progress-text" id="progressText">0% Complete</span>
+                    </div>
+                    <div class="quick-stats">
+                        <div class="stat-item">
+                            <span class="stat-number" id="completedTasks">0</span>
+                            <span class="stat-label">Completed</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalTasks">33</span>
+                            <span class="stat-label">Total Tasks</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="hoursRemaining">17.5</span>
+                            <span class="stat-label">Hours Remaining</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Templates -->
+                <div class="template-selector">
+                    <label class="form-label">Schedule Template:</label>
+                    <select class="form-control" id="scheduleTemplate">
+                        <option value="weekday">Weekday Schedule</option>
+                        <option value="weekend">Weekend Schedule</option>
+                        <option value="intensive">Intensive Work Day</option>
+                    </select>
+                </div>
+
+                <!-- Schedule Timeline -->
+                <div class="schedule-timeline">
+                    <h3>Today's Timeline</h3>
+                    <div class="timeline" id="timeline">
+                        <!-- Timeline items will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Overview Tab -->
+        <div class="tab-content" id="weekly">
+            <div class="weekly-overview">
+                <h3>Weekly Schedule Overview</h3>
+                <div class="weekly-chart">
+                    <img src="https://pplx-res.cloudinary.com/image/upload/v1749911562/pplx_code_interpreter/10c4e79e_uy7zkn.jpg" alt="Weekly Schedule Distribution" class="chart-image">
+                </div>
+                <div class="weekly-summary">
+                    <h4>This Week's Focus Areas</h4>
+                    <div class="focus-areas">
+                        <div class="focus-item">
+                            <div class="focus-color" style="background-color: #4682B4;"></div>
+                            <span>Engineering Work: 12.5 hours/week</span>
+                        </div>
+                        <div class="focus-item">
+                            <div class="focus-color" style="background-color: #32CD32;"></div>
+                            <span>Business Management: 10 hours/week</span>
+                        </div>
+                        <div class="focus-item">
+                            <div class="focus-color" style="background-color: #9370DB;"></div>
+                            <span>Learning & Development: 21 hours/week</span>
+                        </div>
+                        <div class="focus-item">
+                            <div class="focus-color" style="background-color: #FF6B6B;"></div>
+                            <span>Fitness & Health: 7 hours/week</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Goals & Progress Tab -->
+        <div class="tab-content" id="goals">
+            <div class="goals-section">
+                <h3>Weekly Goals & Progress</h3>
+                <div class="goals-grid" id="goalsGrid">
+                    <!-- Goals will be populated by JavaScript -->
+                </div>
+                
+                <div class="tips-section">
+                    <h4>💡 Productivity Tips</h4>
+                    <div class="tips-list" id="tipsList">
+                        <!-- Tips will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Tab -->
+        <div class="tab-content" id="stats">
+            <div class="stats-section">
+                <h3>Time Allocation Statistics</h3>
+                <div class="stats-chart">
+                    <img src="https://pplx-res.cloudinary.com/image/upload/v1749911475/pplx_code_interpreter/d3a8ea7b_hql2le.jpg" alt="Daily Time Allocation" class="chart-image">
+                </div>
+                <div class="category-breakdown">
+                    <h4>Category Breakdown</h4>
+                    <div class="category-list" id="categoryBreakdown">
+                        <!-- Category breakdown will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Activity Modal -->
+        <div class="modal" id="editModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4>Edit Activity</h4>
+                    <button class="close-btn" id="closeModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Time Slot</label>
+                        <input type="text" class="form-control" id="editTime" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Activity</label>
+                        <input type="text" class="form-control" id="editActivity">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select class="form-control" id="editCategory">
+                            <option value="Engineering Work">Engineering Work</option>
+                            <option value="Business Management">Business Management</option>
+                            <option value="Learning">Learning</option>
+                            <option value="Fitness">Fitness</option>
+                            <option value="Health & Wellness">Health & Wellness</option>
+                            <option value="Nutrition">Nutrition</option>
+                            <option value="Communication">Communication</option>
+                            <option value="Personal Time">Personal Time</option>
+                            <option value="Break">Break</option>
+                            <option value="Productivity">Productivity</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="editNotes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn--secondary" id="cancelEdit">Cancel</button>
+                    <button class="btn btn--primary" id="saveEdit">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
