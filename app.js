@@ -1,3 +1,18 @@
+// Firebase configuration (replace with your actual config)
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  databaseURL: "YOUR_DATABASE_URL",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+// Initialize Firebase
+const firebaseApp = firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 // Application Data
 const scheduleData = {
   dailySchedule: [
@@ -56,22 +71,27 @@ const scheduleData = {
 };
 
 // Data persistence functions
-function saveToLocalStorage() {
-  localStorage.setItem('dailySchedule', JSON.stringify(currentSchedule));
-  localStorage.setItem('weeklyGoals', JSON.stringify(scheduleData.weeklyGoals));
+function saveToFirebase() {
+  database.ref('dailySchedule').set(currentSchedule);
+  database.ref('weeklyGoals').set(scheduleData.weeklyGoals);
 }
 
-function loadFromLocalStorage() {
-  const savedSchedule = localStorage.getItem('dailySchedule');
-  const savedGoals = localStorage.getItem('weeklyGoals');
-  
-  if (savedSchedule) {
-    currentSchedule = JSON.parse(savedSchedule);
-  }
-  
-  if (savedGoals) {
-    scheduleData.weeklyGoals = JSON.parse(savedGoals);
-  }
+function loadFromFirebase() {
+  database.ref('dailySchedule').once('value', (snapshot) => {
+    const savedSchedule = snapshot.val();
+    if (savedSchedule) {
+      currentSchedule = savedSchedule;
+      initializeApp(); // Re-initialize after loading data
+    }
+  });
+
+  database.ref('weeklyGoals').once('value', (snapshot) => {
+    const savedGoals = snapshot.val();
+    if (savedGoals) {
+      scheduleData.weeklyGoals = savedGoals;
+      renderGoals(); // Re-render goals after loading
+    }
+  });
 }
 
 // State management
@@ -80,7 +100,8 @@ let currentSchedule = [...scheduleData.dailySchedule];
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-  loadFromLocalStorage(); // Load saved data
+  // loadFromLocalStorage(); // Load saved data
+  loadFromFirebase(); // Load data from Firebase
   initializeApp();
 });
 
@@ -184,7 +205,8 @@ function toggleTaskCompletion(index) {
   renderTimeline();
   updateProgress();
   updateGoalsProgress();
-  saveToLocalStorage(); // Save changes
+  // saveToLocalStorage(); // Save changes
+  saveToFirebase(); // Save changes to Firebase
 }
 
 function updateProgress() {
@@ -228,7 +250,8 @@ function saveEdit() {
     
     renderTimeline();
     renderCategoryBreakdown();
-    saveToLocalStorage(); // Save changes
+    // saveToLocalStorage(); // Save changes
+    saveToFirebase(); // Save changes to Firebase
     closeModal();
   }
 }
