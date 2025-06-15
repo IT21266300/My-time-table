@@ -96,6 +96,12 @@ function initializeApp() {
   // Update total tasks display
   document.getElementById('totalTasks').textContent = currentSchedule.length;
   
+  // Initialize charts after a short delay to ensure DOM is ready
+  setTimeout(() => {
+    updatePieChart();
+    updateWeeklyChart();
+  }, 500);
+  
   // Start notification checker
   setInterval(checkUpcomingTasks, 60000); // Check every minute
 }
@@ -154,12 +160,28 @@ function displayCurrentDate() {
 
 function switchTab(tabName) {
   // Remove active class from all tabs and content
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.classList.remove('text-blue-600', 'border-blue-500');
+    btn.classList.add('text-slate-500', 'border-transparent');
+  });
   document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
   // Add active class to selected tab and content
-  document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+  const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+  activeTab.classList.add('active');
+  activeTab.classList.remove('text-slate-500', 'border-transparent');
+  activeTab.classList.add('text-blue-600', 'border-blue-500');
   document.getElementById(tabName).classList.add('active');
+
+  // Initialize charts when switching to relevant tabs
+  setTimeout(() => {
+    if (tabName === 'weekly') {
+      updateWeeklyChart();
+    } else if (tabName === 'stats') {
+      updatePieChart();
+    }
+  }, 100); // Small delay to ensure DOM is ready
 }
 
 function renderTimeline() {
@@ -168,37 +190,63 @@ function renderTimeline() {
 
   currentSchedule.forEach((item, index) => {
     const timelineItem = document.createElement('div');
-    timelineItem.className = `timeline-item ${item.completed ? 'completed' : ''}`;
+    timelineItem.className = `flex flex-col sm:flex-row items-start sm:items-center p-3 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md ${
+      item.completed 
+        ? 'bg-green-50 border-green-200 shadow-sm' 
+        : 'bg-white border-slate-200 hover:border-slate-300'
+    }`;
     
+    const categoryColors = {
+      'Engineering Work': 'bg-blue-500',
+      'Business Management': 'bg-green-500', 
+      'Learning': 'bg-purple-500',
+      'Fitness': 'bg-red-500',
+      'Health & Wellness': 'bg-cyan-500',
+      'Nutrition': 'bg-orange-500',
+      'Communication': 'bg-yellow-500',
+      'Personal Time': 'bg-pink-500',
+      'Break': 'bg-gray-400',
+      'Productivity': 'bg-teal-500'
+    };
+
     timelineItem.innerHTML = `
-      <div class="time-slot">${item.time}</div>
-      <div class="activity-info">
-        <div class="category-indicator" style="background-color: ${item.color}"></div>
-        <span class="activity-text">${item.activity}</span>
+      <div class="flex items-center space-x-3 sm:space-x-4 flex-1 w-full mb-2 sm:mb-0">
+        <div class="flex flex-col items-center min-w-0 flex-shrink-0">
+          <div class="text-xs sm:text-sm font-semibold text-slate-700">${item.time.split('-')[0]}</div>
+          <div class="text-xs text-slate-500 hidden sm:block">${item.time.split('-')[1]}</div>
+        </div>
+        <div class="w-2 h-2 sm:w-3 sm:h-3 rounded-full ${categoryColors[item.category] || 'bg-gray-400'} flex-shrink-0"></div>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-slate-900 text-sm sm:text-base truncate">${item.activity}</div>
+          <div class="text-xs sm:text-sm text-slate-500">${item.category}</div>
+        </div>
       </div>
-      <div class="activity-category">${item.category}</div>
-      <div class="activity-actions">
-        <input type="checkbox" class="task-checkbox" ${item.completed ? 'checked' : ''} data-index="${index}">
-        <button class="delete-btn" data-index="${index}" title="Delete activity">🗑️</button>
+      <div class="flex items-center space-x-3 w-full sm:w-auto justify-end">
+        <input type="checkbox" class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2" ${item.completed ? 'checked' : ''} data-index="${index}">
+        <button class="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" data-index="${index}" title="Delete activity">
+          <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+        </button>
       </div>
     `;
 
     // Add click event for editing (except on checkbox and delete button)
     timelineItem.addEventListener('click', function(e) {
-      if (e.target.type !== 'checkbox' && !e.target.classList.contains('delete-btn')) {
+      if (e.target.type !== 'checkbox' && !e.target.closest('button')) {
         openEditModal(index);
       }
     });
 
     // Add checkbox event
-    const checkbox = timelineItem.querySelector('.task-checkbox');
+    const checkbox = timelineItem.querySelector('input[type="checkbox"]');
     checkbox.addEventListener('click', function(e) {
       e.stopPropagation();
       toggleTaskCompletion(index);
     });
 
     // Add delete button event
-    const deleteBtn = timelineItem.querySelector('.delete-btn');
+    const deleteBtn = timelineItem.querySelector('button[data-index]');
     deleteBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       deleteActivity(index);
@@ -237,11 +285,11 @@ function openEditModal(index) {
   document.getElementById('editCategory').value = item.category;
   document.getElementById('editNotes').value = item.notes || '';
   
-  document.getElementById('editModal').classList.add('active');
+  document.getElementById('editModal').classList.remove('hidden');
 }
 
 function closeModal() {
-  document.getElementById('editModal').classList.remove('active');
+  document.getElementById('editModal').classList.add('hidden');
   currentEditingIndex = -1;
 }
 
@@ -286,16 +334,16 @@ function renderGoals() {
     const progressPercentage = Math.round((goal.current / goal.target) * 100);
     
     const goalCard = document.createElement('div');
-    goalCard.className = 'goal-card';
+    goalCard.className = 'bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg p-4 border border-slate-200';
     goalCard.innerHTML = `
-      <div class="goal-header">
-        <div class="goal-category">${goal.category}</div>
-        <div class="goal-percentage">${progressPercentage}%</div>
+      <div class="flex justify-between items-center mb-3">
+        <div class="font-semibold text-slate-900">${goal.category}</div>
+        <div class="text-lg font-bold text-blue-600">${progressPercentage}%</div>
       </div>
-      <div class="goal-progress">
-        <div class="goal-progress-fill" style="width: ${progressPercentage}%; background-color: ${getCategoryColor(goal.category)};"></div>
+      <div class="w-full bg-slate-200 rounded-full h-2 mb-3">
+        <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500" style="width: ${progressPercentage}%;"></div>
       </div>
-      <div class="goal-stats">
+      <div class="flex justify-between text-sm text-slate-600">
         <span>${goal.current} hours completed</span>
         <span>${goal.target} hours target</span>
       </div>
@@ -327,10 +375,15 @@ function renderTips() {
   const tipsList = document.getElementById('tipsList');
   tipsList.innerHTML = '';
 
-  scheduleData.tips.forEach(tip => {
+  scheduleData.tips.forEach((tip, index) => {
     const tipItem = document.createElement('div');
-    tipItem.className = 'tip-item';
-    tipItem.textContent = tip;
+    tipItem.className = 'flex items-start p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200';
+    tipItem.innerHTML = `
+      <div class="flex-shrink-0 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3">
+        ${index + 1}
+      </div>
+      <div class="text-sm text-slate-700">${tip}</div>
+    `;
     tipsList.appendChild(tipItem);
   });
 }
@@ -349,15 +402,28 @@ function renderCategoryBreakdown() {
   const sortedCategories = Object.entries(categoryTime)
     .sort(([,a], [,b]) => b - a);
 
+  const categoryColors = {
+    'Engineering Work': 'bg-blue-500',
+    'Business Management': 'bg-green-500', 
+    'Learning': 'bg-purple-500',
+    'Fitness': 'bg-red-500',
+    'Health & Wellness': 'bg-cyan-500',
+    'Nutrition': 'bg-orange-500',
+    'Communication': 'bg-yellow-500',
+    'Personal Time': 'bg-pink-500',
+    'Break': 'bg-gray-400',
+    'Productivity': 'bg-teal-500'
+  };
+
   sortedCategories.forEach(([category, hours]) => {
     const categoryItem = document.createElement('div');
-    categoryItem.className = 'category-item';
+    categoryItem.className = 'flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200';
     categoryItem.innerHTML = `
-      <div class="category-name">
-        <div class="category-indicator" style="background-color: ${getCategoryColor(category)}"></div>
-        ${category}
+      <div class="flex items-center space-x-3">
+        <div class="w-4 h-4 rounded-full ${categoryColors[category] || 'bg-gray-400'}"></div>
+        <span class="font-medium text-slate-800">${category}</span>
       </div>
-      <div class="category-time">${hours}h</div>
+      <span class="font-semibold text-slate-600">${hours}h</span>
     `;
     categoryList.appendChild(categoryItem);
   });
@@ -381,13 +447,23 @@ function updatePieChart() {
     categoryTime[item.category] = (categoryTime[item.category] || 0) + 0.5;
   });
 
+  // Filter out categories with 0 time
+  const filteredData = Object.entries(categoryTime)
+    .filter(([, hours]) => hours > 0)
+    .reduce((acc, [category, hours]) => {
+      acc[category] = hours;
+      return acc;
+    }, {});
+
   const data = {
-    labels: Object.keys(categoryTime),
+    labels: Object.keys(filteredData),
     datasets: [{
-      data: Object.values(categoryTime),
-      backgroundColor: Object.keys(categoryTime).map(cat => getCategoryColor(cat)),
+      data: Object.values(filteredData),
+      backgroundColor: Object.keys(filteredData).map(cat => getCategoryColor(cat) + 'CC'), // Add some transparency
+      borderColor: Object.keys(filteredData).map(cat => getCategoryColor(cat)),
       borderWidth: 2,
-      borderColor: '#fff'
+      hoverBorderWidth: 3,
+      hoverBorderColor: '#fff'
     }]
   };
 
@@ -396,17 +472,48 @@ function updatePieChart() {
   }
 
   pieChart = new Chart(ctx, {
-    type: 'pie',
+    type: 'doughnut', // Changed to doughnut for modern look
     data: data,
     options: {
       responsive: true,
+      maintainAspectRatio: false,
+      cutout: '50%', // Creates the doughnut hole
       plugins: {
         legend: {
           position: 'bottom',
+          labels: {
+            padding: 15,
+            usePointStyle: true,
+            font: {
+              size: 12
+            }
+          }
         },
         title: {
           display: true,
-          text: 'Daily Time Allocation'
+          text: 'Daily Time Allocation',
+          font: {
+            size: 16,
+            weight: 'bold'
+          },
+          padding: 20
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((value / total) * 100).toFixed(1);
+              return `${label}: ${value}h (${percentage}%)`;
+            }
+          }
+        }
+      },
+      layout: {
+        padding: {
+          top: 10,
+          bottom: 10
         }
       }
     }
@@ -420,10 +527,26 @@ function updateWeeklyChart() {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const categories = ['Engineering Work', 'Business Management', 'Learning', 'Fitness', 'Health & Wellness'];
   
+  // Calculate actual weekly data based on current schedule
+  const weeklyData = {};
+  categories.forEach(category => {
+    weeklyData[category] = [];
+    days.forEach(day => {
+      // Calculate hours per category per day based on current schedule
+      const hoursPerDay = currentSchedule
+        .filter(item => item.category === category)
+        .length * 0.5; // Each slot is 30 minutes
+      
+      // For demo purposes, we'll use the same data for each day
+      // In a real app, you'd have different schedules for different days
+      weeklyData[category].push(hoursPerDay);
+    });
+  });
+
   const datasets = categories.map(category => ({
     label: category,
-    data: days.map(() => Math.random() * 4 + 1), // Mock data for demo
-    backgroundColor: getCategoryColor(category),
+    data: weeklyData[category],
+    backgroundColor: getCategoryColor(category) + '80', // Add transparency
     borderColor: getCategoryColor(category),
     borderWidth: 1
   }));
@@ -440,9 +563,13 @@ function updateWeeklyChart() {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       scales: {
         x: {
           stacked: true,
+          grid: {
+            display: false
+          }
         },
         y: {
           stacked: true,
@@ -450,13 +577,37 @@ function updateWeeklyChart() {
           title: {
             display: true,
             text: 'Hours'
+          },
+          ticks: {
+            stepSize: 2
           }
         }
       },
       plugins: {
         title: {
           display: true,
-          text: 'Weekly Schedule Distribution'
+          text: 'Weekly Schedule Distribution',
+          font: {
+            size: 16,
+            weight: 'bold'
+          },
+          padding: 20
+        },
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            usePointStyle: true,
+            font: {
+              size: 12
+            }
+          }
+        }
+      },
+      layout: {
+        padding: {
+          top: 10,
+          bottom: 10
         }
       }
     }
