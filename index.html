@@ -60,6 +60,14 @@
                     </select>
                 </div>
 
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="btn btn--primary" id="addActivity">+ Add Activity</button>
+                    <button class="btn btn--secondary" id="exportSchedule">Export Schedule</button>
+                    <button class="btn btn--secondary" id="importSchedule">Import Schedule</button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;">
+                </div>
+
                 <!-- Schedule Timeline -->
                 <div class="schedule-timeline">
                     <h3>Today's Timeline</h3>
@@ -75,7 +83,7 @@
             <div class="weekly-overview">
                 <h3>Weekly Schedule Overview</h3>
                 <div class="weekly-chart">
-                    <img src="https://pplx-res.cloudinary.com/image/upload/v1749911562/pplx_code_interpreter/10c4e79e_uy7zkn.jpg" alt="Weekly Schedule Distribution" class="chart-image">
+                    <canvas id="weeklyChart" width="400" height="200"></canvas>
                 </div>
                 <div class="weekly-summary">
                     <h4>This Week's Focus Areas</h4>
@@ -123,7 +131,7 @@
             <div class="stats-section">
                 <h3>Time Allocation Statistics</h3>
                 <div class="stats-chart">
-                    <img src="https://pplx-res.cloudinary.com/image/upload/v1749911475/pplx_code_interpreter/d3a8ea7b_hql2le.jpg" alt="Daily Time Allocation" class="chart-image">
+                    <canvas id="pieChart" width="400" height="400"></canvas>
                 </div>
                 <div class="category-breakdown">
                     <h4>Category Breakdown</h4>

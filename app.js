@@ -92,6 +92,12 @@ function initializeApp() {
   renderGoals();
   renderTips();
   renderCategoryBreakdown();
+  
+  // Update total tasks display
+  document.getElementById('totalTasks').textContent = currentSchedule.length;
+  
+  // Start notification checker
+  setInterval(checkUpcomingTasks, 60000); // Check every minute
 }
 
 function setupEventListeners() {
@@ -104,10 +110,23 @@ function setupEventListeners() {
 
   // Schedule template selector
   document.getElementById('scheduleTemplate').addEventListener('change', function() {
-    // For demo purposes, we'll keep the same schedule
-    // In a real app, this would load different schedule templates
-    console.log('Template changed to:', this.value);
+    loadScheduleTemplate(this.value);
   });
+
+  // Add new activity button
+  const addActivityBtn = document.getElementById('addActivity');
+  if (addActivityBtn) {
+    addActivityBtn.addEventListener('click', openAddModal);
+  }
+  
+  // Export/Import functionality
+  const exportBtn = document.getElementById('exportSchedule');
+  const importBtn = document.getElementById('importSchedule');
+  const importFile = document.getElementById('importFile');
+  
+  if (exportBtn) exportBtn.addEventListener('click', exportSchedule);
+  if (importBtn) importBtn.addEventListener('click', () => importFile.click());
+  if (importFile) importFile.addEventListener('change', importSchedule);
 
   // Modal event listeners
   document.getElementById('closeModal').addEventListener('click', closeModal);
@@ -158,12 +177,15 @@ function renderTimeline() {
         <span class="activity-text">${item.activity}</span>
       </div>
       <div class="activity-category">${item.category}</div>
-      <input type="checkbox" class="task-checkbox" ${item.completed ? 'checked' : ''} data-index="${index}">
+      <div class="activity-actions">
+        <input type="checkbox" class="task-checkbox" ${item.completed ? 'checked' : ''} data-index="${index}">
+        <button class="delete-btn" data-index="${index}" title="Delete activity">🗑️</button>
+      </div>
     `;
 
-    // Add click event for editing (except on checkbox)
+    // Add click event for editing (except on checkbox and delete button)
     timelineItem.addEventListener('click', function(e) {
-      if (e.target.type !== 'checkbox') {
+      if (e.target.type !== 'checkbox' && !e.target.classList.contains('delete-btn')) {
         openEditModal(index);
       }
     });
@@ -173,6 +195,13 @@ function renderTimeline() {
     checkbox.addEventListener('click', function(e) {
       e.stopPropagation();
       toggleTaskCompletion(index);
+    });
+
+    // Add delete button event
+    const deleteBtn = timelineItem.querySelector('.delete-btn');
+    deleteBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      deleteActivity(index);
     });
 
     timeline.appendChild(timelineItem);
@@ -332,32 +361,350 @@ function renderCategoryBreakdown() {
     `;
     categoryList.appendChild(categoryItem);
   });
+  
+  // Update charts
+  updatePieChart();
+  updateWeeklyChart();
 }
 
-// Utility function to format time
-function formatTime(timeString) {
-  const [start, end] = timeString.split('-');
-  return `${start} - ${end}`;
+// Add dynamic chart functionality
+let pieChart = null;
+let weeklyChart = null;
+
+function updatePieChart() {
+  const ctx = document.getElementById('pieChart');
+  if (!ctx) return;
+  
+  // Calculate category data
+  const categoryTime = {};
+  currentSchedule.forEach(item => {
+    categoryTime[item.category] = (categoryTime[item.category] || 0) + 0.5;
+  });
+
+  const data = {
+    labels: Object.keys(categoryTime),
+    datasets: [{
+      data: Object.values(categoryTime),
+      backgroundColor: Object.keys(categoryTime).map(cat => getCategoryColor(cat)),
+      borderWidth: 2,
+      borderColor: '#fff'
+    }]
+  };
+
+  if (pieChart) {
+    pieChart.destroy();
+  }
+
+  pieChart = new Chart(ctx, {
+    type: 'pie',
+    data: data,
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+        },
+        title: {
+          display: true,
+          text: 'Daily Time Allocation'
+        }
+      }
+    }
+  });
 }
 
-// Auto-update progress every minute (for demo purposes)
+function updateWeeklyChart() {
+  const ctx = document.getElementById('weeklyChart');
+  if (!ctx) return;
+
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const categories = ['Engineering Work', 'Business Management', 'Learning', 'Fitness', 'Health & Wellness'];
+  
+  const datasets = categories.map(category => ({
+    label: category,
+    data: days.map(() => Math.random() * 4 + 1), // Mock data for demo
+    backgroundColor: getCategoryColor(category),
+    borderColor: getCategoryColor(category),
+    borderWidth: 1
+  }));
+
+  if (weeklyChart) {
+    weeklyChart.destroy();
+  }
+
+  weeklyChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          stacked: true,
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
+        }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Weekly Schedule Distribution'
+        }
+      }
+    }
+  });
+}
+
+// Schedule Templates
+const scheduleTemplates = {
+  weekday: [...scheduleData.dailySchedule], // Current schedule
+  weekend: [
+    {"time": "07:00-07:30", "activity": "Sleep In & Morning Routine", "category": "Health & Wellness", "color": "#87CEEB", "completed": false},
+    {"time": "07:30-08:30", "activity": "Leisurely Breakfast", "category": "Nutrition", "color": "#FFA500", "completed": false},
+    {"time": "08:30-10:00", "activity": "Personal Projects", "category": "Learning", "color": "#9370DB", "completed": false},
+    {"time": "10:00-11:00", "activity": "Outdoor Activity/Walk", "category": "Fitness", "color": "#FF6B6B", "completed": false},
+    {"time": "11:00-12:00", "activity": "Household Chores", "category": "Personal Time", "color": "#FFB6C1", "completed": false},
+    {"time": "12:00-13:00", "activity": "Lunch & Rest", "category": "Nutrition", "color": "#FFA500", "completed": false},
+    {"time": "13:00-15:00", "activity": "Hobby Time", "category": "Personal Time", "color": "#FFB6C1", "completed": false},
+    {"time": "15:00-16:00", "activity": "Social Time/Family", "category": "Personal Time", "color": "#FFB6C1", "completed": false},
+    {"time": "16:00-17:00", "activity": "Light Learning", "category": "Learning", "color": "#9370DB", "completed": false},
+    {"time": "17:00-18:00", "activity": "Workout", "category": "Fitness", "color": "#FF6B6B", "completed": false},
+    {"time": "18:00-19:00", "activity": "Dinner Prep & Eating", "category": "Nutrition", "color": "#FFA500", "completed": false},
+    {"time": "19:00-21:00", "activity": "Entertainment/Relaxation", "category": "Personal Time", "color": "#FFB6C1", "completed": false},
+    {"time": "21:00-22:00", "activity": "Wind Down", "category": "Health & Wellness", "color": "#87CEEB", "completed": false}
+  ],
+  intensive: [
+    {"time": "05:00-05:30", "activity": "Early Morning Routine", "category": "Health & Wellness", "color": "#87CEEB", "completed": false},
+    {"time": "05:30-06:00", "activity": "Quick Workout", "category": "Fitness", "color": "#FF6B6B", "completed": false},
+    {"time": "06:00-06:30", "activity": "Power Breakfast", "category": "Nutrition", "color": "#FFA500", "completed": false},
+    {"time": "06:30-09:00", "activity": "Deep Work Block 1", "category": "Engineering Work", "color": "#4682B4", "completed": false},
+    {"time": "09:00-09:15", "activity": "Break", "category": "Break", "color": "#D3D3D3", "completed": false},
+    {"time": "09:15-12:00", "activity": "Deep Work Block 2", "category": "Engineering Work", "color": "#4682B4", "completed": false},
+    {"time": "12:00-12:30", "activity": "Quick Lunch", "category": "Nutrition", "color": "#FFA500", "completed": false},
+    {"time": "12:30-15:30", "activity": "Business Focus Block", "category": "Business Management", "color": "#32CD32", "completed": false},
+    {"time": "15:30-15:45", "activity": "Break", "category": "Break", "color": "#D3D3D3", "completed": false},
+    {"time": "15:45-18:00", "activity": "Learning & Development", "category": "Learning", "color": "#9370DB", "completed": false},
+    {"time": "18:00-18:30", "activity": "Workout", "category": "Fitness", "color": "#FF6B6B", "completed": false},
+    {"time": "18:30-19:00", "activity": "Dinner", "category": "Nutrition", "color": "#FFA500", "completed": false},
+    {"time": "19:00-20:00", "activity": "Wrap-up & Planning", "category": "Productivity", "color": "#20B2AA", "completed": false},
+    {"time": "20:00-21:00", "activity": "Personal Time", "category": "Personal Time", "color": "#FFB6C1", "completed": false},
+    {"time": "21:00-21:30", "activity": "Wind Down", "category": "Health & Wellness", "color": "#87CEEB", "completed": false}
+  ]
+};
+
+function loadScheduleTemplate(templateName) {
+  if (scheduleTemplates[templateName]) {
+    currentSchedule = [...scheduleTemplates[templateName]];
+    renderTimeline();
+    updateProgress();
+    renderCategoryBreakdown();
+    saveToLocalStorage();
+    showNotification(`Loaded ${templateName} schedule template`, 'success');
+  }
+}
+
+// Notification system
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `notification notification--${type}`;
+  notification.innerHTML = `
+    <span>${message}</span>
+    <button class="notification-close">&times;</button>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Auto remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.remove();
+    }
+  }, 5000);
+  
+  // Add close button functionality
+  notification.querySelector('.notification-close').addEventListener('click', () => {
+    notification.remove();
+  });
+}
+
+// Export/Import functionality
+function exportSchedule() {
+  const data = {
+    schedule: currentSchedule,
+    goals: scheduleData.weeklyGoals,
+    exportDate: new Date().toISOString()
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `schedule-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showNotification('Schedule exported successfully!', 'success');
+}
+
+function importSchedule(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.schedule && Array.isArray(data.schedule)) {
+        currentSchedule = data.schedule;
+        if (data.goals) {
+          scheduleData.weeklyGoals = data.goals;
+        }
+        renderTimeline();
+        updateProgress();
+        renderGoals();
+        renderCategoryBreakdown();
+        saveToLocalStorage();
+        showNotification('Schedule imported successfully!', 'success');
+      } else {
+        throw new Error('Invalid file format');
+      }
+    } catch (error) {
+      showNotification('Error importing schedule: Invalid file format', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function openAddModal() {
+  currentEditingIndex = -1; // Indicates new activity
+  
+  // Set default values for new activity
+  document.getElementById('editTime').value = '';
+  document.getElementById('editActivity').value = '';
+  document.getElementById('editCategory').value = 'Learning';
+  document.getElementById('editNotes').value = '';
+  
+  // Make time field editable for new activities
+  document.getElementById('editTime').readOnly = false;
+  
+  document.getElementById('editModal').classList.add('active');
+}
+
+// Enhanced save function
+function saveEdit() {
+  const time = document.getElementById('editTime').value;
+  const activity = document.getElementById('editActivity').value;
+  const category = document.getElementById('editCategory').value;
+  const notes = document.getElementById('editNotes').value;
+  
+  if (!time || !activity) {
+    showNotification('Please fill in all required fields', 'error');
+    return;
+  }
+  
+  if (currentEditingIndex >= 0) {
+    // Editing existing activity
+    const item = currentSchedule[currentEditingIndex];
+    item.activity = activity;
+    item.category = category;
+    item.notes = notes;
+    item.color = getCategoryColor(category);
+    showNotification('Activity updated successfully!', 'success');
+  } else {
+    // Adding new activity
+    const newActivity = {
+      time: time,
+      activity: activity,
+      category: category,
+      notes: notes,
+      color: getCategoryColor(category),
+      completed: false
+    };
+    
+    // Insert in chronological order
+    const insertIndex = findInsertPosition(time);
+    currentSchedule.splice(insertIndex, 0, newActivity);
+    showNotification('New activity added successfully!', 'success');
+  }
+  
+  renderTimeline();
+  renderCategoryBreakdown();
+  saveToLocalStorage();
+  closeModal();
+}
+
+function findInsertPosition(timeSlot) {
+  const [startTime] = timeSlot.split('-');
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const timeInMinutes = hours * 60 + minutes;
+  
+  for (let i = 0; i < currentSchedule.length; i++) {
+    const [scheduleStartTime] = currentSchedule[i].time.split('-');
+    const [scheduleHours, scheduleMinutes] = scheduleStartTime.split(':').map(Number);
+    const scheduleTimeInMinutes = scheduleHours * 60 + scheduleMinutes;
+    
+    if (timeInMinutes < scheduleTimeInMinutes) {
+      return i;
+    }
+  }
+  
+  return currentSchedule.length;
+}
+
+// Enhanced close modal function
+function closeModal() {
+  document.getElementById('editModal').classList.remove('active');
+  document.getElementById('editTime').readOnly = true; // Reset readonly state
+  currentEditingIndex = -1;
+}
+
+// Time-based notifications
+function checkUpcomingTasks() {
+  const now = new Date();
+  const currentTime = now.getHours() * 60 + now.getMinutes();
+  
+  currentSchedule.forEach((item, index) => {
+    if (!item.completed && !item.notified) {
+      const [startTime] = item.time.split('-');
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const itemTime = hours * 60 + minutes;
+      
+      // Notify 5 minutes before task
+      if (currentTime >= itemTime - 5 && currentTime < itemTime) {
+        showNotification(`Upcoming: ${item.activity} in 5 minutes`, 'info');
+        item.notified = true;
+      }
+      
+      // Auto-complete overdue tasks (optional)
+      if (currentTime > itemTime + 30) {
+        // Uncomment to enable auto-completion
+        // item.completed = true;
+      }
+    }
+  });
+}
+
+// Enhanced auto-update progress every minute
 setInterval(() => {
   const now = new Date();
   const currentTime = now.getHours() * 60 + now.getMinutes();
   
-  // Auto-mark past activities as completed (simplified logic)
-  currentSchedule.forEach((item, index) => {
-    const [startTime] = item.time.split('-');
-    const [hours, minutes] = startTime.split(':').map(Number);
-    const itemTime = hours * 60 + minutes;
-    
-    if (currentTime > itemTime + 30 && !item.completed) {
-      // Optionally auto-complete past items
-      // item.completed = true;
-    }
-  });
-  
   updateProgress();
+  checkUpcomingTasks();
+  
+  // Update current date if it's a new day
+  displayCurrentDate();
 }, 60000);
 
 // Keyboard shortcuts
@@ -373,3 +720,15 @@ document.addEventListener('keydown', function(e) {
     saveEdit();
   }
 });
+
+// Delete activity function
+function deleteActivity(index) {
+  if (confirm('Are you sure you want to delete this activity?')) {
+    currentSchedule.splice(index, 1);
+    renderTimeline();
+    updateProgress();
+    renderCategoryBreakdown();
+    saveToLocalStorage();
+    showNotification('Activity deleted successfully!', 'success');
+  }
+}

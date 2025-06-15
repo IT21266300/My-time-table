@@ -1,4 +1,3 @@
-
 :root {
   /* Colors */
   --color-background: rgba(252, 252, 249, 1);
@@ -384,6 +383,19 @@ pre code {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: var(--space-12);
+  margin-bottom: var(--space-24);
+  flex-wrap: wrap;
+}
+
+.action-buttons .btn {
+  flex: 1;
+  min-width: 120px;
 }
 
 /* Form elements */
@@ -1145,41 +1157,167 @@ select.form-control {
   border-top: 1px solid var(--color-border);
 }
 
+/* Notifications */
+.notification {
+  position: fixed;
+  top: var(--space-20);
+  right: var(--space-20);
+  z-index: 1000;
+  max-width: 400px;
+  padding: var(--space-16);
+  border-radius: var(--radius-base);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow-lg);
+  animation: slideIn 0.3s ease-out;
+}
+
+.notification--success {
+  background-color: var(--color-success);
+}
+
+.notification--error {
+  background-color: var(--color-error);
+}
+
+.notification--info {
+  background-color: var(--color-info);
+}
+
+.notification--warning {
+  background-color: var(--color-warning);
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  margin-left: var(--space-12);
+}
+
+.notification-close:hover {
+  opacity: 0.8;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .container {
     padding: var(--space-12);
   }
   
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .action-buttons .btn {
+    width: 100%;
+  }
+  
+  .notification {
+    left: var(--space-16);
+    right: var(--space-16);
+    max-width: none;
+  }
+  
+  .stats-chart,
+  .weekly-chart {
+    padding: var(--space-12);
+  }
+  
+  .dashboard {
+    padding: var(--space-12);
+  }
+  
   .progress-overview {
-    grid-template-columns: 1fr;
-    text-align: center;
+    flex-direction: column;
+    gap: var(--space-16);
   }
   
   .quick-stats {
-    justify-content: center;
+    justify-content: space-around;
   }
-  
-  .timeline-item {
-    grid-template-columns: 1fr auto;
-    gap: var(--space-8);
+}
+
+/* Enhanced timeline item styles */
+.timeline-item {
+  transition: all var(--duration-normal) var(--ease-standard);
+  border-left: 3px solid transparent;
+}
+
+.timeline-item:hover {
+  border-left-color: var(--color-primary);
+  transform: translateX(2px);
+}
+
+.timeline-item.completed {
+  opacity: 0.7;
+  border-left-color: var(--color-success);
+}
+
+.timeline-item.completed:hover {
+  opacity: 1;
+}
+
+/* Enhanced modal */
+.modal {
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  animation: modalSlideIn var(--duration-normal) var(--ease-standard);
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translate(-50%, -60%);
+    opacity: 0;
   }
-  
-  .time-slot {
-    grid-column: 1 / -1;
-    margin-bottom: var(--space-4);
+  to {
+    transform: translate(-50%, -50%);
+    opacity: 1;
   }
-  
-  .activity-category {
-    display: none;
-  }
-  
-  .nav-tabs {
-    gap: var(--space-2);
-  }
-  
-  .tab-btn {
-    padding: var(--space-8) var(--space-12);
-    font-size: var(--font-size-sm);
-  }
+}
+
+/* Activity actions */
+.activity-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  opacity: 0.6;
+  transition: all var(--duration-fast) var(--ease-standard);
+  font-size: 14px;
+}
+
+.delete-btn:hover {
+  opacity: 1;
+  background-color: rgba(192, 21, 47, 0.1);
+  transform: scale(1.1);
+}
+
+.timeline-item:not(:hover) .delete-btn {
+  opacity: 0.3;
 }
